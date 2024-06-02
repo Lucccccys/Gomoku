@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gomoku</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <style>
+        #board {
+            display: grid;
+            grid-gap: 2px;
+        }
+        .cell {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 1px solid black;
+            text-align: center;
+            line-height: 30px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gomoku Game</h1>
+    <label for="boardSize">Board Size:</label>
+    <input type="number" id="boardSize" value="15" min="5" max="20">
+    <button onclick="setBoardSize()">Set Board Size</button>
+    <div id="board"></div>
+
+    <script>
+        const socket = io();
+
+        socket.on('update', function (data) {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${data.board[0].length}, 30px)`;
+
+            for (let row = 0; row < data.board.length; row++) {
+                for (let col = 0; col < data.board[row].length; col++) {
+                    let cellElem = document.createElement('span');
+                    cellElem.textContent = data.board[row][col];
+                    cellElem.className = 'cell';
+                    cellElem.dataset.row = row;
+                    cellElem.dataset.col = col;
+                    board.appendChild(cellElem);
+                }
+            }
+
+            if (data.message) {
+                alert(data.message);
+            }
+        });
+
+        function setBoardSize() {
+            const size = document.getElementById('boardSize').value;
+            fetch('/set_size', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ size: parseInt(size) }),
+            }).then(response => response.json())
+              .then(data => {
+                  socket.emit('update', data);
+              });
+        }
+
+        function makeMove(x, y) {
+            fetch('/move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ x, y }),
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('board').addEventListener('click', (e) => {
+                if (e.target.className === 'cell') {
+                    const x = parseInt(e.target.dataset.row);
+                    const y = parseInt(e.target.dataset.col);
+                    makeMove(x, y);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
